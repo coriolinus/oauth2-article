@@ -35,7 +35,7 @@ Upon receipt, the OAuth2 provider verifies that the callback URI and client key 
 
 ![](https://aaronparecki.com/2012/07/29/2/oauth-authorization-prompt.png)
 
-Assuming the user approves, the OAUth2 server then redirects them back to the callback URI that you provided, including **authorization code** in the query parameters: `GET https://api.yourapp.com/oauth2/callback/?code=AUTH_CODE`. This is a fast-expiring, single-use token; immediately upon its receipt, your server should turn around and make another request to the OAuth2 provider, including both the auth code and your client secret: `POST https://oauth2provider.com/token/?grant_type=authorization_code&code=AUTH_CODE&redirect_uri=CALLBACK_URI&client_id=CLIENT_KEY&client_secret=CLIENT_SECRET`.
+Assuming the user approves, the OAUth2 server then redirects them back to the callback URI that you provided, including an **authorization code** in the query parameters: `GET https://api.yourapp.com/oauth2/callback/?code=AUTH_CODE`. This is a fast-expiring, single-use token; immediately upon its receipt, your server should turn around and make another request to the OAuth2 provider, including both the auth code and your client secret: `POST https://oauth2provider.com/token/?grant_type=authorization_code&code=AUTH_CODE&redirect_uri=CALLBACK_URI&client_id=CLIENT_KEY&client_secret=CLIENT_SECRET`.
 
 This request provides both your client key and your client secret, alongside the authorization code, and your callback URI. If everything matches up, the server returns an **access token**, with which you can make calls to that provider while authenticated as the user. As the request is generated directly from your server to the OAuth2 server over a TLS-secured connection, your client secret is never revealed to the client or to any attacker.
 
@@ -47,7 +47,23 @@ This flow is cumbersome for a REST API: while you could have the frontend client
 
 ### The client-side OAuth2 flow
 
-## Here's a recipe
+In this flow, the frontend becomes responsible for handling the entire OAuth2 process. It generally resembles the server-side flow, with an important exception: frontends live on machines that users control, so cannot be entrusted with the client secret. The solution is to simply eliminate that entire step of the process.
+
+The first step, as in the server-side flow, is registering the application. In this case, the project owner will still register the application, but as a web application; the OAuth2 provider will still provide a **client key**, but may not provide any client secret.
+
+The frontend provides the user with a social login button as before, and as before, this directs to a webpage the OAuth2 provider controls, requesting permission for our application to access certain aspects of the user's profile. The link looks a little different this time: `https://oauth2provider.com/auth?response_type=token&client_id=CLIENT_KEY&redirect_uri=CALLBACK_URI&scope=profile&scope=email`. Note that the `response_type` this time is now `token`.
+
+> This should be the same image we created before
+
+![](https://aaronparecki.com/2012/07/29/2/oauth-authorization-prompt.png)
+
+So what about the redirect url? The frontend actually temporarily runs a server capable of accepting HTTP requests on the user's device; the redirect URL is of the form `http://localhost:7862/callback/?token=TOKEN`. Because the OAuth2 server returns a HTTP redirect after the user has accepted, and this redirect is processed by the browser on the user's device, this address is interpreted correctly, giving the frontend access to the token.
+
+From this point, the frontend can directly call the OAuth2 provider's API using the token, but they don't really want that; they want authenticated access to your API! However, the backend is excluded from the OAuth2 process using this flow, so all it needs to provide is an endpoint at which the frontend can exchange a social provider's access token for a token which grants access to your API.
+
+This flow may seem complicated for the frontend, and it is, if you require the frontend team to develop everything on their own. However, both [Facebook](https://developers.facebook.com/docs/facebook-login/web/login-button) and [Google](https://developers.google.com/identity/sign-in/web/sign-in) provide libraries which enable the frontend to include login buttons which handle the entire process with a minimum of configuration.
+
+## Here's a recipe for token exchange on the backend
 
 ## That looks like magic. How does it work?
 
