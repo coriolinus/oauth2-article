@@ -56,7 +56,7 @@ def exchange_token(request, backend):
             nfe = 'non_field_errors'
 
         try:
-            # this line, plus the psa decorator above, should be all that's necessary to
+            # this line, plus the psa decorator above, are all that's necessary to
             # get and populate a user object for any properly enabled/configured backend
             # which python-social-auth can handle.
             user = request.backend.do_auth(serializer.validated_data['access_token'])
