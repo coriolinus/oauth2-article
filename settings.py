@@ -38,8 +38,12 @@ for key in ['GOOGLE_OAUTH2_KEY',
     exec("SOCIAL_AUTH_{key} = os.environ.get('{key}', '')".format(key=key))
 
 # We need to set at least the following scopes, to ensure that we can read
-# basic profile details and email addresses. Of course, you can add whichever
-# additional scopes your application requires, but
+# basic profile details and email addresses.
+# NB: These scopes are never actually used on the backend; things will work
+# just fine if you omit these settings from the backend. However, the
+# _frontend_ needs to be sure to send at least these scopes in order for the
+# tokens to have enough permissions to get the user model updates / matching
+# working properly.
 SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ['email', 'profile']
 
