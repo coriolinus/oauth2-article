@@ -63,8 +63,94 @@ From this point, the frontend can directly call the OAuth2 provider's API using 
 
 This flow may seem complicated for the frontend, and it is, if you require the frontend team to develop everything on their own. However, both [Facebook](https://developers.facebook.com/docs/facebook-login/web/login-button) and [Google](https://developers.google.com/identity/sign-in/web/sign-in) provide libraries which enable the frontend to include login buttons which handle the entire process with a minimum of configuration.
 
+### Diagram Time
+
+> Please have a designer make this diagram pretty
+
+```text
+.        SERVER FLOW                             CLIENT FLOW
+
++-----------------------------+         +-----------------------------+
+| Page presents login button  |         | Frontend presents login     |
+| to user                     |         | button to user              |
++-----------------------------+         +-----------------------------+
+               |                                       |
++-----------------------------+         +-----------------------------+
+| Button click redirects to   |         | Button click redirects to   |
+| social auth server          |         | social auth server          |
++-----------------------------+         +-----------------------------+
+               |                                       |               
+               |                        +-----------------------------+
+               |                        | Frontend starts up a short- |
+               |                        | lived web server which      |
+               |                        | accepts requests at the     |
+               |                        | callback uri.               |
+               |                        +-----------------------------+
+               |                                       |
++-----------------------------+         +-----------------------------+
+| OAuth2 provider validates   |         | OAuth2 provider validates   |
+| request; redirects user to  |         | request; redirects user to  |
+| server-side                 |         | frontend                    |
+| callback url, including an  |         | callback url, including an  |
+| authorization code          |         | access token                |
++-----------------------------+         +-----------------------------+
+               |                                       |
++-----------------------------+         +-----------------------------+
+| Server makes REST request   |         | Frontend makes REST request |
+| to OAuth2 provider,         |         | to your backend, exchanging |
+| exchanging authorization    |         | provider access token for   |
+| code for access token       |         | an access token which works |
++-----------------------------+         | on your API                 |
+               |                        +-----------------------------+
+               |                                       |
++-----------------------------+         +-----------------------------+
+| Backend makes calls to      |         | Frontend makes calls to     |
+| OAuth2 provider as          |         | your API; backend calls     |
+| necessary                   |         | OAuth2 provider as          |
++-----------------------------+         | necessary                   |
+                                        +-----------------------------+
+```
+
 ## Here's a recipe for token exchange on the backend
 
-## That looks like magic. How does it work?
+Under the client flow, the backend is pretty isolated from the OAuth2 process. Unfortunately, that doesn't mean its job is simple. You want at least the following features:
 
-## Why not just roll my own? OAuth2 isn't _that_ hard.
+- Send at least one request to the OAuth2 provider just to ensure that the token that the frontend provided was valid, not some arbitrary random string.
+- When the token is valid, return a token valid for your API. Otherwise, return an informative error.
+- If this is a new user, create a `User` model for them and populate it appropriately.
+- If this is a user for whom a `User` model already exists, match them by their email address, so they gain access to the correct account instead of creating a new one for the social login.
+- Update the user's profile details according to what they've provided on social media.
+
+So here's the magic: how to get all that working on the backend in two dozen lines of code. This depends on the [Python Social Auth](https://github.com/python-social-auth) library, so you'll need to include both `social-auth-core` and `social-auth-app-django` in your `requirements.txt`. You'll also need to configure the library as documented [here](http://psa.matiasaguirre.net/docs/configuration/django.html). Note that this excludes some exception handling for clarity. Full code for this example can be found [here](http://gist.github.com/put the gist with the source files here).
+
+> Don't forget to update the link above once we have a gist with the source.
+
+```python
+@api_view(http_method_names=['POST'])
+@permission_classes([AllowAny])
+@psa()
+def exchange_token(request, backend):
+    serializer = SocialSerializer(data=request.data)
+
+    if serializer.is_valid(raise_exception=True):
+        user = request.backend.do_auth(serializer.validated_data['access_token'])
+
+        if user:
+            if user.is_active:
+                token, _ = Token.objects.get_or_create(user=user)
+                return Response({'token': token.key})
+            else:
+                return Response(
+                    {'errors': {'non_field_errors': 'This user account is inactive'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            return Response(
+                {'errors': {'token': 'Invalid token'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+```
+
+## That looks a lot like magic. How does it work?
+
+## Why not just roll my own?
