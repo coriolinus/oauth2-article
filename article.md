@@ -133,17 +133,17 @@ def exchange_token(request, backend):
     serializer = SocialSerializer(data=request.data)
 
     if serializer.is_valid(raise_exception=True):
+        # This is the key line of code: with the @psa() decorator above,
+        # it engages the PSA machinery to perform whatever social authentication
+        # steps are configured in your SOCIAL_AUTH_PIPELINE. At the end, it either
+        # hands you a populated User model of whatever type you've configured in
+        # your project, or None.
         user = request.backend.do_auth(serializer.validated_data['access_token'])
 
         if user:
-            if user.is_active:
-                token, _ = Token.objects.get_or_create(user=user)
-                return Response({'token': token.key})
-            else:
-                return Response(
-                    {'errors': {'non_field_errors': 'This user account is inactive'}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({'token': token.key})
+
         else:
             return Response(
                 {'errors': {'token': 'Invalid token'}},
@@ -182,4 +182,16 @@ Add a mapping to this function in your `urls.py`, and you're all set!
 
 ## That looks a lot like magic. How does it work?
 
-## Why not just roll my own?
+In short, it's magic. Python Social Auth is a very cool, very complex piece of machinery; it's perfectly happy to handle authentication and access to any of [several dozen social auth providers](http://psa.matiasaguirre.net/docs/backends/index.html#supported-backends), and it works on most popular Python web frameworks, including [Django](http://psa.matiasaguirre.net/docs/configuration/django.html), [Flask](http://psa.matiasaguirre.net/docs/configuration/flask.html), [Pyramid](http://psa.matiasaguirre.net/docs/configuration/pyramid.html), [CherryPy](http://psa.matiasaguirre.net/docs/configuration/cherrypy.html), and [WebPy](http://psa.matiasaguirre.net/docs/configuration/webpy.html).
+
+For the most part, this is just a very standard DRF function-based view: It listens for POST requests on whichever path you map it to in your `urls.py`, and assuming you send it a request in the format it expects, it then gets you a `User` object, or `None`. If you get a `User`, it's of the model type you've configured elsewhere in your project, and might or might not have already existed. PSA already took care of validating the token, identifying whether or not a user match existed, creating a user if necessary, and updating their details from the social provider.
+
+The key bit of magic is the `@psa()` decorator on the view, which adds some members to the `request` object which gets passed in to your view. The one of interest to us is `request.backend`; a backend, to PSA, is any social authentication provider. The appropriate one was chosen for us and appended to the `request` object because of the `backend` argument to the view, which gets populated by the URL itself.
+
+Once you have the `backend` object in hand, it's perfectly happy to authenticate you against that provider, given your access code; that's the `do_auth` method. This, in turn, engages the entirety of the `SOCIAL_AUTH_PIPELINE` from your config file. This pipeline can do some pretty powerful things if you extend it, but it already does everything we need with nothing but built-in stages.
+
+After that, it's just back to normal DRF code: if you got a valid `User` object, you can return an appropriate API token very easily. If you didn't get a valid `User` object back, it's still easy to generate an error.
+
+One drawback of this technique is that while it's relatively simple to return errors if they occur, it's hard to get much detail about what specifically went wrong; PSA swallows any details the server might have returned about what the problem was.
+
+## I don't like magic. Why not just roll my own?
