@@ -15,6 +15,8 @@ The good news is that OAuth2 has emerged as the industry standard for social and
 
 ## A quick overview of the OAuth2 flow
 
+> The OAuth2 flow section here is necessary background information, but doesn't necessarily flow well with this topic. I couldn't find another Toptal Blog article to link to which explained all this, so I wrote it out, but I'd be glad to consider other solutions.
+
 OAuth2 was designed from the beginning as a web authentication protocol. This is not quite the same as if it had been designed as a _net_ authentication protocol; it assumes that tools like HTML rendering and browser redirects are available to you. This is obviously something of a hindrance for a JSON-based API, but we can work around that. First, let's go through the process as if we were writing a traditional, server-side website.
 
 ### The server-side OAuth2 flow
@@ -180,6 +182,8 @@ SOCIAL_AUTH_PIPELINE = (
 
 Add a mapping to this function in your `urls.py`, and you're all set!
 
+> An illustration here to convey the magic: a wizard opening a lock, maybe
+
 ## That looks a lot like magic. How does it work?
 
 In short, it's magic. Python Social Auth is a very cool, very complex piece of machinery; it's perfectly happy to handle authentication and access to any of [several dozen social auth providers](http://psa.matiasaguirre.net/docs/backends/index.html#supported-backends), and it works on most popular Python web frameworks, including [Django](http://psa.matiasaguirre.net/docs/configuration/django.html), [Flask](http://psa.matiasaguirre.net/docs/configuration/flask.html), [Pyramid](http://psa.matiasaguirre.net/docs/configuration/pyramid.html), [CherryPy](http://psa.matiasaguirre.net/docs/configuration/cherrypy.html), and [WebPy](http://psa.matiasaguirre.net/docs/configuration/webpy.html).
@@ -195,3 +199,11 @@ After that, it's just back to normal DRF code: if you got a valid `User` object,
 One drawback of this technique is that while it's relatively simple to return errors if they occur, it's hard to get much detail about what specifically went wrong; PSA swallows any details the server might have returned about what the problem was.
 
 ## I don't like magic. Why not just roll my own?
+
+In a word: scalability. Very few social OAuth2 providers require or return exactly the same information in their API calls in exactly the same way; there are all kinds of special cases and exceptions. Adding a new social provider once you've got PSA already up and running is a matter of a few lines of configuration in your settings files; you don't have to adjust any code at all. PSA abstracts all of that out, so that you can focus on your own application.
+
+## But how on Earth do I test this?
+
+Good question! `unittest.mock` is not well-suited to mocking out API calls buried under an abstraction layer deep inside a library; just discovering the precise path to mock would take substantial effort. Instead, because PSA is built atop the Requests library, we use the excellent [Responses](https://github.com/getsentry/responses) library to mock out the providers at the HTTP level. A full discussion of testing is beyond the scope of this article, but a sample of our tests are included in [this gist](http://gist.github.com/update me!). Particular functions to note there are the `mocked` context manager and the `TestSocialAuth` class.
+
+> Don't forget to update the link above once we have a public gist or something with this code.
