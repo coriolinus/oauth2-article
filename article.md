@@ -249,4 +249,8 @@ Good question! `unittest.mock` is not well-suited to mocking out API calls burie
 
 > Don't forget to update the link above once we have a public gist or something with this code.
 
-[^n]: We're using the Django Rest Framework
+## Conclusion
+
+The OAuth2 process is a detailed and complicated thing with a lot of inherent complexity. Luckily, it's possible to bypass much of that complexity by bringing in a library dedicated to handling it in as painless a way as possible. Python Social Auth does a great job at that; we've demo'd a Django/DRF view which utilizes the client-side, implicit, OAuth2 flow to get seamless user creation and matching in only 25 lines of code.
+
+Naturally, there's always a better way, and we all love dogshedding. Share your thoughts in the comments below!
