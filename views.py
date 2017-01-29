@@ -94,8 +94,7 @@ def exchange_token(request, backend):
             # Unfortunately, PSA swallows any information the backend provider
             # generated as to why specifically the authentication failed;
             # this makes it tough to debug except by examining the server logs.
-            # Therefore, we just have to assume it was a problem with the token.
             return Response(
-                {'errors': {'token': 'Invalid token'}},
+                {'errors': {nfe: "Authentication Failed"}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
