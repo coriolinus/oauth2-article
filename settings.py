@@ -57,8 +57,15 @@ SOCIAL_AUTH_USERNAME_IS_FULL_EMAIL = True
 # define a custom social auth pipeline.
 # The key thing here is to include email association. Both FB and Google
 # only return validated user emails, so email validation is safe.
-# Don't do this f you wish to use an OAuth2 provider which doesn't
+#
+# Don't do this if you wish to use an OAuth2 provider which doesn't
 # validate email addresses, as that opens up an attack vector.
+# An attacker targeting one of your users might create an account with
+# the OAuth2 provider, falsely claiming your user's email address as
+# their own. Without validation, that provider can't know otherwise.
+# They can then gain access to your user's account by logging in via
+# that OAuth2 provider.
+#
 # See here for more details:
 # http://psa.matiasaguirre.net/docs/use_cases.html#associate-users-by-email
 SOCIAL_AUTH_PIPELINE = (
