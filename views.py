@@ -41,6 +41,11 @@ def exchange_token(request, backend):
         POST API_ROOT + 'social/facebook/'
         POST API_ROOT + 'social/google-oauth2/'
 
+    Note that those endpoint examples are verbatim according to the
+    PSA backends which we configured in settings.py. If you wish to enable
+    other social authentication backends, they'll get their own endpoints
+    automatically according to PSA.
+
     ## Request format
 
     Requests must include the following field
@@ -61,7 +66,7 @@ def exchange_token(request, backend):
             # which python-social-auth can handle.
             user = request.backend.do_auth(serializer.validated_data['access_token'])
         except HTTPError as e:
-            # A HTTPError bubbled up from the request to the social auth provider.
+            # An HTTPError bubbled up from the request to the social auth provider.
             # This happens, at least in Google's case, every time you send a malformed
             # or incorrect access key.
             return Response(

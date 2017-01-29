@@ -5,7 +5,10 @@ from urllib.parse import urlparse, parse_qs
 
 from rest_framework.test import APITestCase
 
+# This is the responses library mentioned in the article, which
+# provides RequestsMock
 import responses
+
 from requests.exceptions import HTTPError
 from requests.models import Response
 from social_core.backends import facebook, google
@@ -13,10 +16,10 @@ from social_core.backends import facebook, google
 from core.models import User
 import core.tests.fixtures as fixtures
 
-SOCIAL_URL = "/api/2.0/social/{}/"
+SOCIAL_URL = "/api/2.0/social/{}/"  # Customize for your own endpoint URL scheme
 
 
-class TryToken:
+class TryToken:  # using the python3 idiom
     """
     Mixin class to provide a simple means of attempting access via a token.
     """
@@ -29,6 +32,10 @@ class TryToken:
 
 
 class TestInvalidProvider(TryToken, APITestCase):
+    """
+    Test that PSA is correctly limiting login attempts to social auth providers
+    which we have specifically enabled.
+    """
     # obviously, if we support yahoo logins in the future,
     # we'll have to change this.
     provider = 'yahoo'
@@ -80,7 +87,11 @@ def respond_to(request):
 @contextmanager
 def mocked(endpoint):
     """
-    Content manager which mocks out the appropriate foreign endpoint.
+    Context manager which mocks out the appropriate foreign endpoint.
+
+    Because the response depends on the particular request--we're mocking a
+    dynamic endpoint, not a static page--we provide a callback here instead
+    of a static string of response content.
     """
     with responses.RequestsMock() as rsps:
         rsps.add_callback(responses.GET, endpoint,
@@ -91,36 +102,13 @@ def mocked(endpoint):
         yield rsps
 
 
-class FacebookMock:
-    provider = 'facebook'
-    # got lucky; the URL the library uses is a publicly-accessible variable.
-    base_url = facebook.FacebookOAuth2.USER_DATA_URL.replace('.', r'\.')
-    mock_url = re.compile(
-        # match arbitrary key-value query strings at the end
-        base_url + '\?([\w-]+(=[\w-]*)?(&[\w-]+(=[\w-]*)?)*)?$'
-    )
-
-
-class GoogleMock:
-    provider = 'google-oauth2'
-    # less lucky here:
-    # Taken from https://github.com/python-social-auth/social-core/blob/master/social_core/backends/google.py#L70
-    # Naturally, if this changes in the PSA library, we'll have to change it here.
-    # This is why you pin your libraries, folks.
-    base_url = 'https://www.googleapis.com/plus/v1/people/me'.replace('.', r'\.')
-    mock_url = re.compile(
-        # match arbitrary key-value query strings at the end
-        base_url + '\?([\w-]+(=[\w-]*)?(&[\w-]+(=[\w-]*)?)*)?$'
-    )
-
-
-class TestSocialAuth(TryToken):
+class SocialAuthTests(TryToken):
     """
     Social auth tests.
 
     Note that this isn't actually a descendent of APITestCase, which it would need to be
     to run directly. Instead, we have to create subclasses which mix in this,
-    FacebookTest, GoogleTest, etc., with APITestCase, so that setup gets run appropriately.
+    TestFacebook, TestGoogle, etc., with APITestCase, so that setup gets run appropriately.
     """
 
     def test_new_user_creation(self):
@@ -192,12 +180,31 @@ class TestSocialAuth(TryToken):
         new_usernames = {u.username for u in User.objects.all()}
         self.assertEqual(usernames, new_usernames)
 
+# This is a regular expression string designed to capture an arbitrary number
+# of arbitary query strings from the end of an URL.
+QUERY_STRINGS_RE = '\?([\w-]+(=[\w-]*)?(&[\w-]+(=[\w-]*)?)*)?$'
 
-class TestGoogle(TestSocialAuth, GoogleMock, APITestCase):
-    "Actually run tests for Google"
-    pass
 
-
-class TestFacebook(TestSocialAuth, FacebookMock, APITestCase):
+class TestFacebook(SocialAuthTests, APITestCase):
     "Actually run tests for Facebook"
-    pass
+    provider = 'facebook'
+    # got lucky; the URL the library uses is a publicly-accessible variable.
+    base_url = facebook.FacebookOAuth2.USER_DATA_URL.replace('.', r'\.')
+    mock_url = re.compile(
+        # match arbitrary key-value query strings at the end
+        base_url + QUERY_STRINGS_RE
+    )
+
+
+class TestGoogle(SocialAuthTests, APITestCase):
+    "Actually run tests for Google"
+    provider = 'google-oauth2'
+    # less lucky here:
+    # Taken from https://github.com/python-social-auth/social-core/blob/master/social_core/backends/google.py#L70
+    # Naturally, if this changes in the PSA library, we'll have to change it here.
+    # This is why you pin your libraries, folks.
+    base_url = 'https://www.googleapis.com/plus/v1/people/me'.replace('.', r'\.')
+    mock_url = re.compile(
+        # match arbitrary key-value query strings at the end
+        base_url + QUERY_STRINGS_RE
+    )
