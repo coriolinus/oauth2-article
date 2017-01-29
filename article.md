@@ -160,9 +160,7 @@ Under the client flow, the backend is pretty isolated from the OAuth2 process. U
 - If this is a user for whom a `User` model already exists, match them by their email address, so they gain access to the correct account instead of creating a new one for the social login.
 - Update the user's profile details according to what they've provided on social media.
 
-So here's the magic: how to get all that working on the backend in two dozen lines of code. This depends on the [Python Social Auth](https://github.com/python-social-auth) library ("PSA" henceforth), so you'll need to include both `social-auth-core` and `social-auth-app-django` in your `requirements.txt`. You'll also need to configure the library as documented [here](http://psa.matiasaguirre.net/docs/configuration/django.html). Note that this excludes some exception handling for clarity. Full code for this example can be found [here](http://gist.github.com/put the gist with the source files here).
-
-> Don't forget to update the link above once we have a gist with the source.
+So here's the magic: how to get all that working on the backend in two dozen lines of code. This depends on the [Python Social Auth](https://github.com/python-social-auth) library ("PSA" henceforth), so you'll need to include both `social-auth-core` and `social-auth-app-django` in your `requirements.txt`. You'll also need to configure the library as documented [here](http://psa.matiasaguirre.net/docs/configuration/django.html). Note that this excludes some exception handling for clarity. Full code for this example can be found [here](https://github.com/coriolinus/oauth2-article/blob/master/views.py).
 
 ```python
 @api_view(http_method_names=['POST'])
@@ -192,7 +190,7 @@ def exchange_token(request, backend):
             )
 ```
 
-There's just a little more that needs to go in your settings, and then you're all set:
+There's just a little more that needs to go in your settings ([example](https://github.com/coriolinus/oauth2-article/blob/master/settings.py)), and then you're all set:
 
 ```python
 AUTHENTICATION_BACKENDS = (
@@ -245,9 +243,7 @@ In a word: extensibility. Very few social OAuth2 providers require or return exa
 
 ## But how on Earth do I test this?
 
-Good question! `unittest.mock` is not well-suited to mocking out API calls buried under an abstraction layer deep inside a library; just discovering the precise path to mock would take substantial effort. Instead, because PSA is built atop the Requests library, we use the excellent [Responses](https://github.com/getsentry/responses) library to mock out the providers at the HTTP level. A full discussion of testing is beyond the scope of this article, but a sample of our tests are included in [this gist](http://gist.github.com/update me!). Particular functions to note there are the `mocked` context manager and the `TestSocialAuth` class.
-
-> Don't forget to update the link above once we have a public gist or something with this code.
+Good question! `unittest.mock` is not well-suited to mocking out API calls buried under an abstraction layer deep inside a library; just discovering the precise path to mock would take substantial effort. Instead, because PSA is built atop the Requests library, we use the excellent [Responses](https://github.com/getsentry/responses) library to mock out the providers at the HTTP level. A full discussion of testing is beyond the scope of this article, but a sample of our tests are included [here](https://github.com/coriolinus/oauth2-article/blob/master/test_social.py). Particular functions to note there are the `mocked` context manager and the `TestSocialAuth` class.
 
 ## Conclusion
 
